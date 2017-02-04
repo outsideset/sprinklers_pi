@@ -233,7 +233,11 @@ static void JSONwCheck(const KVPairs & key_value_pairs, FILE * stream_file)
 	char pws[12] = {0};
 	GetPWS(pws);
 	const Weather::ReturnVals vals = w.GetVals(GetWUIP(), key, GetZip(), pws, GetUsePWS());
-	const int scale = w.GetScale(vals);
+        time_t local_now = nntpTimeServer.LocalNow();
+	const int scale = w.GetScale(local_now, vals);
+
+	// call just to generate the trace output
+	GetMonthlySeasonalAdjust(local_now, true);
 
 	fprintf(stream_file, "{\n");
 	fprintf_P(stream_file, PSTR("\t\"valid\" : \"%s\",\n"), vals.valid ? "true" : "false");
@@ -241,6 +245,8 @@ static void JSONwCheck(const KVPairs & key_value_pairs, FILE * stream_file)
 	fprintf_P(stream_file, PSTR("\t\"minhumidity\" : \"%d\",\n"), vals.minhumidity);
 	fprintf_P(stream_file, PSTR("\t\"maxhumidity\" : \"%d\",\n"), vals.maxhumidity);
 	fprintf_P(stream_file, PSTR("\t\"meantempi\" : \"%d\",\n"), vals.meantempi);
+	fprintf_P(stream_file, PSTR("\t\"maxtempi\" : \"%d\",\n"), vals.maxtempi);
+	fprintf_P(stream_file, PSTR("\t\"forecast_maxtempi\" : \"%d\",\n"), vals.forecast_maxtempi);
 	fprintf_P(stream_file, PSTR("\t\"precip_today\" : \"%d\",\n"), vals.precip_today);
 	fprintf_P(stream_file, PSTR("\t\"precip\" : \"%d\",\n"), vals.precipi);
 	fprintf_P(stream_file, PSTR("\t\"wind_mph\" : \"%d\",\n"), vals.windmph);

@@ -29,6 +29,8 @@ bool isZoneOn(int iNum);
 void TurnOnZone(int iValve);
 void TurnOffZones();
 void io_setup();
+int GetMonthlySeasonalAdjust (time_t local_now, bool useOffMonthBasis);
+
 
 class runStateClass
 {

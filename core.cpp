@@ -213,10 +213,40 @@ void TurnOnZone(int iValve)
 	pumpControl(zone.bPump);
 }
 
+int GetMonthlySeasonalAdjust (time_t local_now, bool useOffMonthBasis)
+{
+	static const int OFF_MONTH_BASIS = 100; // allows offmonth to still turn on when its hot
+        static int monthlyAdj[] =
+        {
+                0, 0, 20, 50,
+                75, 100, 100, 100,
+                75, 50, 50, 50
+        };
+
+	int seasonal = monthlyAdj[month(local_now)-1];
+	//trace(F("MONTH IS (%d)\n"), month(local_now));
+	if (seasonal == 0) 
+	{
+	    if (useOffMonthBasis)
+	    {
+		seasonal = OFF_MONTH_BASIS;
+		trace(F("seasonal adjust for off month (%d) (normal when wunderground site is working.)\n"), seasonal);
+	    }
+	    else
+	    {
+		trace(F("seasonal adjust for off month (%d) (for cases when internet or wunderground site is NOT WORKING.)\n"), seasonal);
+	    } 
+	    
+	}
+	else trace(F("seasonalAdjst (%d)\n"), seasonal);
+        return seasonal;
+}
+
 // Adjust the durations based on atmospheric conditions
-static runStateClass::DurationAdjustments AdjustDurations(Schedule * sched)
+static runStateClass::DurationAdjustments AdjustDurations(Schedule * sched, time_t local_now)
 {
 	runStateClass::DurationAdjustments adj(100);
+	adj.seasonal = GetMonthlySeasonalAdjust(local_now, false);
 	if (sched->IsWAdj())
 	{
 		Weather w;
@@ -224,9 +254,26 @@ static runStateClass::DurationAdjustments AdjustDurations(Schedule * sched)
 		GetApiKey(key);
 		char pws[12] = {0};
 		GetPWS(pws);
-		adj.wunderground = w.GetScale(GetWUIP(), key, GetZip(), pws, GetUsePWS());   // factor to adjust times by.  100 = 100% (i.e. no adjustment)
+                Weather::ReturnVals vals = w.GetVals(
+			GetWUIP(), key, GetZip(), pws, GetUsePWS());
+		if (vals.valid) 
+		{
+			adj.wunderground =  w.GetScale(local_now, vals);
+			// if wunderground data is available, 
+			// make sure off months use an adjusted scale
+			adj.seasonal = GetMonthlySeasonalAdjust(local_now, true);
+		}
+		else
+		{
+			trace(F("!!! Wunderground unavailable !!!\n"));
+			adj.wunderground = 100;
+		}
+
+		//adj.wunderground = w.GetScale(local_now, GetWUIP(), key, GetZip(), pws, GetUsePWS());   // factor to adjust times by.  100 = 100% (i.e. no adjustment)
 	}
-	adj.seasonal = GetSeasonalAdjust();
+	//adj.seasonal = GetSeasonalAdjust();
+	trace(F("seasonalAdjst (%d)\n"), adj.seasonal);
+
 	long scale = ((long)adj.seasonal * (long)adj.wunderground) / 100;
 	for (uint8_t k = 0; k < NUM_ZONES; k++)
 		sched->zone_duration[k] = min(((long)sched->zone_duration[k] * scale + 50) / 100, 254);
@@ -246,6 +293,8 @@ static inline bool IsRunToday(const Schedule & sched, time_t time_now)
 // Load the on/off events for a specific schedule/time or the quick schedule
 void LoadSchedTimeEvents(int8_t sched_num, bool bQuickSchedule)
 {
+
+	const time_t local_now = nntpTimeServer.LocalNow();
 	Schedule sched;
 	runStateClass::DurationAdjustments adj;
 	if (!bQuickSchedule)
@@ -254,12 +303,11 @@ void LoadSchedTimeEvents(int8_t sched_num, bool bQuickSchedule)
 		if ((sched_num < 0) || (sched_num >= iNumSchedules))
 			return;
 		LoadSchedule(sched_num, &sched);
-		adj=AdjustDurations(&sched);
+		adj=AdjustDurations(&sched, local_now);
 	}
 	else
 		sched = quickSchedule;
 
-	const time_t local_now = nntpTimeServer.LocalNow();
 	short start_time = (local_now - previousMidnight(local_now)) / 60;
 
 	for (uint8_t k = 0; k < NUM_ZONES; k++)
