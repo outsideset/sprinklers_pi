@@ -39,15 +39,18 @@ static void ParseResponse(EthernetClient & client, Weather::ReturnVals * ret)
 //			trace(F("Received Bytes:%d\n"), len);
 			if (len <= 0)
 			{
-				if (!client.connected())
+				if (!client.connected()) {
+					trace("Client Disconnected\n");
 					break;
-				else
+				} else {
 					continue;  //TODO:  implement a timeout here.  Same in testing parse headers.
+				}
 			}
 			else
 			{
 				recvbufptr = recvbuf;
 				recvbufend = recvbuf + len;
+				//trace(recvbuf);
 			}
 		}
 		char c = *(recvbufptr++);
@@ -302,8 +305,13 @@ static Weather::ReturnVals __GetVals(const IPAddress & ip, const char * key, uin
 			snprintf(getstring, sizeof(getstring), "GET /api/%s/yesterday/conditions/q/pws:%s.json HTTP/1.1\r\n", key, pws);
 		else
 			snprintf(getstring, sizeof(getstring), "GET /api/%s/yesterday/conditions/forecast/q/%ld.json HTTP/1.1\r\n", key, (long) zip);
-		//trace(getstring);
+		//	snprintf(getstring, sizeof(getstring), "GET /api/%s/yesterday/conditions/q/%ld.json HTTP/1.1\r\n", key, (long) zip);
+		trace(getstring);
 		client.write((uint8_t*) getstring, strlen(getstring));
+		//send host header
+		snprintf(getstring, sizeof(getstring), "Host: api.wunderground.com\r\nConnection: close\r\n\r\n");
+		client.write((uint8_t*) getstring, strlen(getstring));
+
 
 		//send host header
 		snprintf(getstring, sizeof(getstring), "Host: api.wunderground.com\r\nConnection: close\r\n\r\n");
