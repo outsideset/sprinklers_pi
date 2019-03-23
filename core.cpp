@@ -6,7 +6,17 @@
 
 #include "core.h"
 #include "settings.h"
+
+#if defined(WEATHER_WUNDERGROUND)
+#include "Wunderground.h"
+#elif defined(WEATHER_AERIS)
+#include "Aeris.h"
+#elif defined(WEATHER_DARKSKY)
+#include "DarkSky.h"
+#else
 #include "Weather.h"
+#endif
+
 #include "web.h"
 #include "Event.h"
 #include "port.h"
@@ -20,7 +30,7 @@ static tftp tftpServer;
 #endif
 
 #ifdef LOGGING
-Logging log;
+Logging logger;
 #endif
 static web webServer;
 nntp nntpTimeServer;
@@ -37,7 +47,7 @@ void runStateClass::LogSchedule()
 {
 #ifdef LOGGING
 	if ((m_eventTime > 0) && (m_zone >= 0))
-		log.LogZoneEvent(m_eventTime, m_zone, nntpTimeServer.LocalNow() - m_eventTime, m_bSchedule ? m_iSchedule+1:-1, m_adj.seasonal, m_adj.wunderground);
+		logger.LogZoneEvent(m_eventTime, m_zone, nntpTimeServer.LocalNow() - m_eventTime, m_bSchedule ? m_iSchedule+1:-1, m_adj.seasonal, m_adj.wunderground);
 #endif
 }
 
@@ -178,6 +188,10 @@ void io_setup()
 	io_latch();
 }
 
+void io_latchNow()
+{
+	io_latch();
+}
 
 void TurnOffZones()
 {
@@ -246,37 +260,31 @@ int GetMonthlySeasonalAdjust (time_t local_now, bool useOffMonthBasis)
 static runStateClass::DurationAdjustments AdjustDurations(Schedule * sched, time_t local_now)
 {
 	runStateClass::DurationAdjustments adj(100);
-	adj.seasonal = GetMonthlySeasonalAdjust(local_now, false);
-	if (sched->IsWAdj())
-	{
-		Weather w;
-		char key[17];
-		GetApiKey(key);
-		char pws[12] = {0};
-		GetPWS(pws);
-                Weather::ReturnVals vals = w.GetVals(
-			GetWUIP(), key, GetZip(), pws, GetUsePWS());
-		if (vals.valid) 
-		{
-			adj.wunderground =  w.GetScale(local_now, vals);
-			// if wunderground data is available, 
-			// make sure off months use an adjusted scale
-			adj.seasonal = GetMonthlySeasonalAdjust(local_now, true);
-		}
-		else
-		{
-			trace(F("!!! Wunderground unavailable !!!\n"));
-			adj.wunderground = 100;
-		}
 
-		//adj.wunderground = w.GetScale(local_now, GetWUIP(), key, GetZip(), pws, GetUsePWS());   // factor to adjust times by.  100 = 100% (i.e. no adjustment)
+	adj.seasonal = GetMonthlySeasonalAdjust(local_now, false);
+	if (sched->IsWAdj()) {
+#if defined(WEATHER_WUNDERGROUND)
+		Wunderground w;
+#elif defined(WEATHER_AERIS)
+		Aeris w;
+#elif defined(WEATHER_DARKSKY)
+		DarkSky w;
+#else
+		// this is a dummy provider which will just result in 100
+		Weather w;
+#endif
+		// get factor to adjust times by.  100 = 100% (i.e. no adjustment)
+		adj.wunderground = w.GetScale();
+		// if wunderground data is available, 
+		// make sure off months use an adjusted scale
+		adj.seasonal = GetMonthlySeasonalAdjust(local_now, true);
 	}
 	//adj.seasonal = GetSeasonalAdjust();
 	trace(F("seasonalAdjst (%d)\n"), adj.seasonal);
 
 	long scale = ((long)adj.seasonal * (long)adj.wunderground) / 100;
 	for (uint8_t k = 0; k < NUM_ZONES; k++)
-		sched->zone_duration[k] = min(((long)sched->zone_duration[k] * scale + 50) / 100, 254);
+		sched->zone_duration[k] = (uint8_t)spi_min(((long)sched->zone_duration[k] * scale + 50) / 100, 254);
 	return adj;
 }
 
@@ -291,7 +299,7 @@ static inline bool IsRunToday(const Schedule & sched, time_t time_now)
 }
 
 // Load the on/off events for a specific schedule/time or the quick schedule
-void LoadSchedTimeEvents(int8_t sched_num, bool bQuickSchedule)
+void LoadSchedTimeEvents(uint8_t sched_num, bool bQuickSchedule)
 {
 
 	const time_t local_now = nntpTimeServer.LocalNow();
@@ -449,7 +457,7 @@ void mainLoop()
 		io_setup();
 
 #ifdef LOGGING
-		if (!log.Init())
+		if (!logger.Init())
 			exit(EXIT_FAILURE);
 #endif
 

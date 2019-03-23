@@ -1,16 +1,19 @@
 #
 # Makefile for the Sprinkling System
 
-VERSION=1.0.9
+VERSION := $(shell cat version.txt )
 
 BUILD_DIR=build
 CC=gcc
-CCFLAGS=-O3 -Wall -fmessage-length=0 -MMD -MP -DLOGGING -DVERSION=\"$(VERSION)\"
+CCFLAGS=-O3 -Wall -fmessage-length=0 -MMD -MP -DLOGGING -DVERSION=\"$(VERSION)\" -std=c++11 
 
 CPP_SRCS += \
 Event.cpp \
 Logging.cpp \
 Weather.cpp \
+Wunderground.cpp \
+Aeris.cpp \
+DarkSky.cpp \
 core.cpp \
 port.cpp \
 settings.cpp \

@@ -14,7 +14,7 @@
 #include "port.h"
 #ifdef LOGGING
 #include "Logging.h"
-extern Logging log;
+extern Logging logger;
 #endif
 
 #ifndef VERSION
@@ -23,7 +23,7 @@ extern Logging log;
 
 void mainLoop();
 void ClearEvents();
-void LoadSchedTimeEvents(int8_t sched_num, bool bQuickSchedule = false);
+void LoadSchedTimeEvents(uint8_t sched_num, bool bQuickSchedule = false);
 void ReloadEvents(bool bAllEvents = false);
 bool isZoneOn(int iNum);
 void TurnOnZone(int iValve);
@@ -31,6 +31,7 @@ void TurnOffZones();
 void io_setup();
 int GetMonthlySeasonalAdjust (time_t local_now, bool useOffMonthBasis);
 
+void io_latchNow();
 
 class runStateClass
 {
