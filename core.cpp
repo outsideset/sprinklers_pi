@@ -274,7 +274,7 @@ static runStateClass::DurationAdjustments AdjustDurations(Schedule * sched, time
 		Weather w;
 #endif
 		// get factor to adjust times by.  100 = 100% (i.e. no adjustment)
-		adj.wunderground = w.GetScale();
+		adj.wunderground = w.GetScale(local_now);
 		// if wunderground data is available, 
 		// make sure off months use an adjusted scale
 		adj.seasonal = GetMonthlySeasonalAdjust(local_now, true);
