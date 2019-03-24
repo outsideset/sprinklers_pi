@@ -26,8 +26,11 @@ static void ParseResponse(json &data, Weather::ReturnVals * ret)
 	ret->valid = false;
 	ret->maxhumidity = -999;
 	ret->minhumidity = 999;
+	ret->forecast_maxtempi = 0;
+	ret->maxtempi = 0;
 
 	float temp=0;
+	float max_temp = 0;
 	float wind=0;
 	float precip=0;
 	float uv=0;
@@ -36,6 +39,7 @@ static void ParseResponse(json &data, Weather::ReturnVals * ret)
 
 	try {
 		for (auto &hour : data["hourly"]["data"]) {
+			max_temp = std::max(max_temp, hour["temperature"].get<float>());
 			temp += hour["temperature"].get<float>();
 			wind += hour["windSpeed"].get<float>();
 			precip += hour["precipIntensity"].get<float>();
@@ -52,6 +56,8 @@ static void ParseResponse(json &data, Weather::ReturnVals * ret)
 		if (i > 0) {
 			ret->valid = true;
 			ret->meantempi = (short) std::round(temp/i);
+			ret->maxtempi = (short) max_temp;
+			ret->forecast_maxtempi = (short) max_temp; // TODO: get forecast. HARDCODE FOR NOW
 			ret->windmph = (short) std::round(wind/i * WIND_FACTOR);
 			ret->precipi = (short) std::round(precip * PRECIP_FACTOR); // we want total not average
 			ret->UV = (short) std::round(uv/i * UV_FACTOR);
@@ -136,3 +142,4 @@ Weather::ReturnVals DarkSky::InternalGetVals(const Weather::Settings & settings)
 }
 
 #endif
+
