@@ -30,38 +30,29 @@ static void ParseResponse(json &data, Weather::ReturnVals * ret)
 	ret->maxtempi = 0;
 
 	float temp=0;
-	float max_temp = 0;
 	float wind=0;
 	float precip=0;
 	float uv=0;
 	short humidity;
-	short i=0;
 
 	try {
-		for (auto &hour : data["hourly"]["data"]) {
-			max_temp = std::max(max_temp, hour["temperature"].get<float>());
-			temp += hour["temperature"].get<float>();
-			wind += hour["windSpeed"].get<float>();
-			precip += hour["precipIntensity"].get<float>();
-			uv += hour["uvIndex"].get<float>();
-			humidity = (short) std::round(hour["humidity"].get<float>() * 100.0);
-			if (humidity > ret->maxhumidity) {
-				ret->maxhumidity = humidity;
-			}
-			if (humidity < ret->minhumidity) {
-				ret->minhumidity = humidity;
-			}
-			i++;
-		}
-		if (i > 0) {
-			ret->valid = true;
-			ret->meantempi = (short) std::round(temp/i);
-			ret->maxtempi = (short) max_temp;
-			ret->forecast_maxtempi = (short) max_temp; // TODO: get forecast. HARDCODE FOR NOW
-			ret->windmph = (short) std::round(wind/i * WIND_FACTOR);
-			ret->precipi = (short) std::round(precip * PRECIP_FACTOR); // we want total not average
-			ret->UV = (short) std::round(uv/i * UV_FACTOR);
-		}
+
+		auto & today = data["daily"]["data"][3];
+		wind = today["windSpeed"].get<float>();
+		precip = today["precipIntensity"].get<float>() * 24.0;		
+		uv = today["uvIndex"].get<float>();		
+
+		auto low = (short) today["temperatureLow"].get<float>();
+
+		ret->maxtempi = (short) today["temperatureHigh"].get<float>();
+		ret->meantempi = (ret->maxtempi + (short) low) / 2;
+		ret->forecast_maxtempi = ret->maxtempi; // TODO: get forecast. HARDCODE FOR NOW
+		ret->windmph = (short) std::round(wind * WIND_FACTOR);
+		ret->precipi = (short) std::round(precip * PRECIP_FACTOR); // we want total not average
+		ret->UV = (short) std::round(uv * UV_FACTOR);
+		humidity = (short) std::round(today["humidity"].get<float>() * 100.0);
+		ret->maxhumidity = ret->minhumidity =  humidity;
+		ret->valid = true;
 	} catch(std::exception &err) {
 		trace(err.what());
 	}
@@ -81,8 +72,8 @@ static void ParseResponse(json &data, Weather::ReturnVals * ret)
 static void GetData(const Weather::Settings & settings,const char *m_darkSkyAPIHost,time_t timstamp, Weather::ReturnVals * ret)
 {
 	char cmd[255];
-	
-	snprintf(cmd, sizeof(cmd), "/usr/bin/curl -sS -o /tmp/darksky.json 'https://%s/forecast/%s/%s,%ld?exclude=currently,daily,minutely,flags'", m_darkSkyAPIHost, settings.apiSecret, settings.location, timstamp);
+
+	snprintf(cmd, sizeof(cmd), "/usr/bin/curl -sS -o /tmp/darksky.json 'https://%s/forecast/%s/%s,%ld?exclude=currently,hourly,minutely,flags'", m_darkSkyAPIHost, settings.apiSecret, settings.location, timstamp);
 	// trace("cmd: %s\n",cmd);
 	
 	FILE *fh;
@@ -117,28 +108,27 @@ static void GetData(const Weather::Settings & settings,const char *m_darkSkyAPIH
 
 Weather::ReturnVals DarkSky::InternalGetVals(const Weather::Settings & settings) const
 {
-	ReturnVals vals = {0};
+	Weather::ReturnVals minus_two = {0};
+	Weather::ReturnVals minus_one = {0};
+	Weather::ReturnVals today = {0};
+	Weather::ReturnVals tomorrow = {0};
 	const time_t 	local_now = nntpTimeServer.LocalNow();
 
-	// today
-	trace("Get Today's Weather\n");
-	GetData(settings, m_darkSkyAPIHost, local_now, &vals);
-	if (vals.valid) {
-		// save today's values
-		short precip_today = vals.precipi;
-		short uv_today = vals.UV;
+	trace("Get Weather for recent days\n");
+	GetData(settings, m_darkSkyAPIHost, local_now - 2 * 24 * 3600, &minus_two);
+	GetData(settings, m_darkSkyAPIHost, local_now - 24 * 3600, &minus_one);
+	GetData(settings, m_darkSkyAPIHost, local_now, &today);
+	GetData(settings, m_darkSkyAPIHost, local_now + 24 * 3600, &tomorrow);
 
-		// yesterday
-		trace("Get Yesterday's Weather\n");
-		GetData(settings, m_darkSkyAPIHost, local_now - 24 * 3600, &vals);
-		if (vals.valid) {
-			// restore today's values
-			vals.precip_today = precip_today;
-			vals.UV = uv_today;
-		}
+	if (!minus_two.valid || !minus_one.valid || !today.valid || !tomorrow.valid) {
+		trace("Get Weather FAILED\n");
+		return Weather::ReturnVals();
 	}
+
+	today.forecast_maxtempi = tomorrow.maxtempi;
+	today.precipi = minus_two.precip_today + minus_one.precip_today + tomorrow.precip_today;  
 	
-	return vals;
+	return today;
 }
 
 #endif
