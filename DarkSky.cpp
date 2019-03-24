@@ -37,7 +37,7 @@ static void ParseResponse(json &data, Weather::ReturnVals * ret)
 
 	try {
 
-		auto & today = data["daily"]["data"][3];
+		auto & today = data["daily"]["data"][0];
 		wind = today["windSpeed"].get<float>();
 		precip = today["precipIntensity"].get<float>() * 24.0;		
 		uv = today["uvIndex"].get<float>();		
