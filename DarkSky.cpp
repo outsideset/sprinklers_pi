@@ -34,19 +34,29 @@ static void ParseResponse(json &data, Weather::ReturnVals * ret)
 	float precip=0;
 	float uv=0;
 	short humidity;
+        float futureFactor = 1.0;
 
 	try {
 
+            auto & daily = data["daily"]["data"];
+ 	    // if there's more than one entry assume this
+	    // data is for TODAY and future days. Assume
+	    // these are predictions so give them less
+            // weight
+            if (daily.size() > 1) futureFactor = 0.5;
+
 	    int index = 0;
-            for (auto &d : data["daily"]["data"]) {
+            for (auto &d : daily) {
+                auto precipActual = d["precipIntensity"].get<float>() * 24.0;
 	        if (index < 2) {
-                   precip += d["precipIntensity"].get<float>() * 24.0;
+                   precip += precipActual * futureFactor;
                 }
-	        trace("index: %d, precip: %0.2f\n", index, precip);
+	        trace("index: %d, precipActual: %0.2f, precipTotalFactored: %0.2f\n", index, precipActual, precip);
+                futureFactor /= 2.0;
                 index++;
             }
 
-		auto & today = data["daily"]["data"][0];
+		auto & today = daily[0];
 		wind = today["windSpeed"].get<float>();
 		//precip = today["precipIntensity"].get<float>() * 24.0;		
 		uv = today["uvIndex"].get<float>();		
@@ -55,7 +65,12 @@ static void ParseResponse(json &data, Weather::ReturnVals * ret)
 
 		ret->maxtempi = (short) today["temperatureHigh"].get<float>();
 		ret->meantempi = (ret->maxtempi + (short) low) / 2;
-		ret->forecast_maxtempi = ret->maxtempi; // TODO: get forecast. HARDCODE FOR NOW
+
+		if (daily.size() >= 2) {
+		    ret->forecast_maxtempi = daily[1]["temperatureHigh"].get<float>();
+                } else {
+		    //ret->forecast_maxtempi = ret->maxtempi; // TODO: get forecast. HARDCODE FOR NOW
+                }
 		ret->windmph = (short) std::round(wind * WIND_FACTOR);
 		ret->precip_today = (short) std::round(precip * PRECIP_FACTOR); // we want total not average
 		ret->UV = (short) std::round(uv * UV_FACTOR);
@@ -124,7 +139,7 @@ Weather::ReturnVals DarkSky::InternalGetVals(const Weather::Settings & settings)
 	Weather::ReturnVals minus_two = {0};
 	Weather::ReturnVals minus_one = {0};
 	Weather::ReturnVals today = {0};
-	Weather::ReturnVals tomorrow = {0};
+	//Weather::ReturnVals tomorrow = {0};
 	const time_t 	local_now = nntpTimeServer.LocalNow();
 
 	trace("Get Weather for recent days\n");
@@ -139,7 +154,7 @@ Weather::ReturnVals DarkSky::InternalGetVals(const Weather::Settings & settings)
 		return Weather::ReturnVals();
 	}
 
-	today.forecast_maxtempi = tomorrow.maxtempi;
+	//today.forecast_maxtempi = tomorrow.maxtempi;
 	today.precipi = minus_two.precip_today + minus_one.precip_today;
 // + tomorrow.precip_today;  
 	
