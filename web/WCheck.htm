@@ -32,11 +32,12 @@
                         wuText.append("<br/>Max Humidity: " + data.maxhumidity + "%");
                         wuText.append("<br/>Precipitation: " + data.precip/100 + "\"");
                         wuText.append("<br/>Wind: " + data.wind_mph/10 + "mph");
-                        wuText.append("<br/>Max Temp: " + data.forecast_maxtempi + "&deg;F");
                         wuText.append("<h3>Today's Values</h3>");
                         wuText.append("Precipitation: " + data.precip_today/100 + "\"");
                         wuText.append("<br/>Max Temp: " + data.maxtempi + "&deg;F");
                         wuText.append("<br/>UV: " + data.UV/10 + " ");
+                        wuText.append("<h3>Forecast</h3>");
+                        wuText.append("Max Temp: " + data.forecast_maxtempi + "&deg;F");
                     }
                 }}); // ajax
         }); // on pagebeforeshow handler
