@@ -234,8 +234,15 @@ int GetMonthlySeasonalAdjust (time_t local_now, bool useOffMonthBasis)
         {
                 0, 0, 20, 50,
                 75, 100, 100, 100,
-                75, 50, 50, 50
+                85, 75, 75, 60
         };
+
+//        static int monthlyAdj[] =
+//        {
+//                0, 0, 20, 50,
+//                75, 100, 100, 100,
+//                75, 50, 50, 50
+//        };
 
 	int seasonal = monthlyAdj[month(local_now)-1];
 	//trace(F("MONTH IS (%d)\n"), month(local_now));
