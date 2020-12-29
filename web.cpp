@@ -281,8 +281,10 @@ static void JSONwCheck(const KVPairs & key_value_pairs, FILE * stream_file)
 
 	const Weather::ReturnVals vals = w.GetVals();
 	const int scale = w.GetScale(local_now, vals);
-	// call just to generate the trace output
-	GetMonthlySeasonalAdjust(local_now, true);
+	const int mAdj = GetMonthlySeasonalAdjust(local_now, true);
+        double overallScale = (mAdj * scale) / 10000.0;
+        const int adjFloor = GetMonthlyAdjustmentCutoff(local_now);
+        trace(F("Overall Scale: %lf, cutoff minutes: %d\n"), overallScale, adjFloor);
 
 	fprintf(stream_file, "{\n");
 	fprintf_P(stream_file, PSTR("\t\"valid\" : \"%s\",\n"), vals.valid ? "true" : "false");

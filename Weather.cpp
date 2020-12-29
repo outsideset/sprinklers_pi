@@ -62,14 +62,14 @@ static const int TEMP_MULTIPLIER = 2.0;
 static const int ON_MONTH_CUTOFF = 10;
 static const int ON_MONTH_TEMP_BIAS = 3;
 
-static const int OFF_MONTH_CUTOFF = 20;
+static const int OFF_MONTH_CUTOFF = 10;
 //static const int OFF_MONTH_TEMP_BIAS_ADJUSTMENT = 10;
 //static const int OFF_MONTH_TEMP_BIAS = 
 //    ((100 - OFF_MONTH_CUTOFF) / TEMP_MULTIPLIER) +
 //     OFF_MONTH_TEMP_BIAS_ADJUSTMENT;
 static const int OFF_MONTH_TEMP_BIAS = 58;
 
-static bool IsOnMonth (time_t local_now)
+bool IsOnMonth (time_t local_now)
 {
         static bool onMonths[] =
         {
@@ -82,7 +82,7 @@ static bool IsOnMonth (time_t local_now)
         return onMonths[month_index];
 }
 
-static int GetMonthlyAdjustmentCutoff (time_t local_now) 
+int GetMonthlyAdjustmentCutoff (time_t local_now) 
 {
         const int val = IsOnMonth(local_now) ? ON_MONTH_CUTOFF : OFF_MONTH_CUTOFF;
 	trace(F("Monthly Adjustment Cutoff(%d)\n"), val);
@@ -135,15 +135,6 @@ int16_t Weather::GetScale(time_t local_now, const ReturnVals & vals) const
 	trace(F("WundergroundG temp(y=%d,t=%d) precip(y=%d, t=%d) avghum(%d)\n"), 
 vals.maxtempi, vals.forecast_maxtempi, vals.precipi, vals.precip_today, avgHum);
 	trace(F("Adjusting H(%d)T(%d)R(%d):%d\n"), humid_factor, temp_factor, rain_factor, adj);
-
-   	const int adjFloor = GetMonthlyAdjustmentCutoff(local_now);
-	if (adj < adjFloor) {
-	   trace(F("!!! adj(%d) < cutoff(%d). Flooring !!!\n"), adj, adjFloor);
-	   adj = 0;
- 	}
-	else if (!IsOnMonth(local_now)) {
-	   trace(F("!!! Sprinklers activating in off month !!!\n"));
-	}
 	return adj;
 }
 

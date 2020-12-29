@@ -62,4 +62,7 @@ private:
 	virtual ReturnVals InternalGetVals(const Settings & settings) const;
 };
 
+int GetMonthlyAdjustmentCutoff (time_t local_now);
+bool IsOnMonth (time_t local_now)  ;
+
 #endif

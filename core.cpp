@@ -232,9 +232,9 @@ int GetMonthlySeasonalAdjust (time_t local_now, bool useOffMonthBasis)
 	static const int OFF_MONTH_BASIS = 100; // allows offmonth to still turn on when its hot
         static int monthlyAdj[] =
         {
-                0, 0, 20, 50,
-                75, 100, 100, 100,
-                85, 75, 75, 60
+                0, 0, 50, 75,
+                100, 100, 100, 100,
+                75, 75, 25, 25
         };
 
 //        static int monthlyAdj[] =
@@ -289,9 +289,21 @@ static runStateClass::DurationAdjustments AdjustDurations(Schedule * sched, time
 	//adj.seasonal = GetSeasonalAdjust();
 	trace(F("seasonalAdjst (%d)\n"), adj.seasonal);
 
-	long scale = ((long)adj.seasonal * (long)adj.wunderground) / 100;
-	for (uint8_t k = 0; k < NUM_ZONES; k++)
-		sched->zone_duration[k] = (uint8_t)spi_min(((long)sched->zone_duration[k] * scale + 50) / 100, 254);
+	double scale = (adj.seasonal * adj.wunderground) / 10000.0;
+        trace(F("Overall Scale =%lf\n"), scale);
+        const int adjFloor = GetMonthlyAdjustmentCutoff(local_now);
+	for (uint8_t k = 0; k < NUM_ZONES; k++) {
+		//sched->zone_duration[k] = (uint8_t)spi_min(((long)sched->zone_duration[k] * scale + 50) / 100, 254);
+
+                sched->zone_duration[k] = (uint8_t)spi_min((long)(sched->zone_duration[k] * scale), 254);
+                if (sched->zone_duration[k] < adjFloor) {
+                    trace(F("!!! zone: %d, adj(%d) < cutoff(%d). Flooring !!!\n"), k, sched->zone_duration[k], adjFloor);
+                    sched->zone_duration[k] = 0;
+                }
+                else if (!IsOnMonth(local_now)) {
+                   trace(F("!!! Sprinklers activating in off month !!!\n"));
+                }                                                                                        
+        }
 	return adj;
 }
 
