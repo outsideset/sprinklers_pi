@@ -62,13 +62,14 @@ static const int TEMP_MULTIPLIER = 2.0;
 static const int ON_MONTH_CUTOFF = 10;
 static const int ON_MONTH_TEMP_BIAS = 3;
 
-static const int OFF_MONTH_CUTOFF = 10;
+//static const int OFF_MONTH_CUTOFF = 10;
 //static const int OFF_MONTH_TEMP_BIAS_ADJUSTMENT = 10;
 //static const int OFF_MONTH_TEMP_BIAS = 
 //    ((100 - OFF_MONTH_CUTOFF) / TEMP_MULTIPLIER) +
 //     OFF_MONTH_TEMP_BIAS_ADJUSTMENT;
-static const int OFF_MONTH_TEMP_BIAS = 58;
+//static const int OFF_MONTH_TEMP_BIAS = 58;
 
+/*
 bool IsOnMonth (time_t local_now)
 {
         static bool onMonths[] =
@@ -81,12 +82,16 @@ bool IsOnMonth (time_t local_now)
 	//trace(F("IsOnMonth=%d, month index=%d\n"), (int) onMonths[month_index], month_index);
         return onMonths[month_index];
 }
+*/
 
 int GetMonthlyAdjustmentCutoff (time_t local_now) 
 {
+    return ON_MONTH_CUTOFF;
+/*
         const int val = IsOnMonth(local_now) ? ON_MONTH_CUTOFF : OFF_MONTH_CUTOFF;
 	trace(F("Monthly Adjustment Cutoff(%d)\n"), val);
 	return val;
+*/
 }
 
 static int GetMonthlyAverageHumidity (time_t local_now) 
@@ -113,10 +118,12 @@ static int GetMonthlyAverageTemperature (time_t local_now)
                 77, 74, 67, 61 
         };
 	const int month_index = month(local_now) - 1;
-        bool is_on_month = IsOnMonth(local_now);
-	const int bias = is_on_month ? ON_MONTH_TEMP_BIAS : OFF_MONTH_TEMP_BIAS;
+        //bool is_on_month = IsOnMonth(local_now);
+	//const int bias = is_on_month ? ON_MONTH_TEMP_BIAS : OFF_MONTH_TEMP_BIAS;
+	const int bias = ON_MONTH_TEMP_BIAS;
         const int avg = monthlyAvg[month_index];
-	trace(F("Local Monthly Avg Temp,Bias(%d,%d) %s\n"), avg, bias, is_on_month ? "ON MONTH" : "OFF MONTH");
+	//trace(F("Local Monthly Avg Temp,Bias(%d,%d) %s\n"), avg, bias, is_on_month ? "ON MONTH" : "OFF MONTH");
+	trace(F("Local Monthly Avg Temp,Bias(%d,%d)\n"), avg, bias);
 	return avg + bias;
 }
 

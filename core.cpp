@@ -232,7 +232,7 @@ int GetMonthlySeasonalAdjust (time_t local_now, bool useOffMonthBasis)
 	static const int OFF_MONTH_BASIS = 100; // allows offmonth to still turn on when its hot
         static int monthlyAdj[] =
         {
-                0, 0, 50, 75,
+                25, 25, 50, 75,
                 100, 100, 100, 100,
                 75, 75, 25, 25
         };
@@ -300,9 +300,9 @@ static runStateClass::DurationAdjustments AdjustDurations(Schedule * sched, time
                     trace(F("!!! zone: %d, adj(%d) < cutoff(%d). Flooring !!!\n"), k, sched->zone_duration[k], adjFloor);
                     sched->zone_duration[k] = 0;
                 }
-                else if (!IsOnMonth(local_now)) {
-                   trace(F("!!! Sprinklers activating in off month !!!\n"));
-                }                                                                                        
+                //else if (!IsOnMonth(local_now)) {
+                //   trace(F("!!! Sprinklers activating in off month !!!\n"));
+                //}                                                                                      
         }
 	return adj;
 }
